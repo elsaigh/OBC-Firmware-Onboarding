@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 /* LM75BD Registers (p.8) */
 #define LM75BD_REG_CONF 0x01U  /* Configuration Register (R/W) */
@@ -27,6 +28,29 @@ error_code_t lm75bdInit(lm75bd_config_t *config) {
 
 error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
   /* Implement this driver function */
+
+  uint8_t temp_pointer_byte = 0x00U; // selects temp register at 00 LSB
+  uint8_t *send_buf = &temp_pointer_byte;
+
+  i2cSendTo(devAddr, send_buf, 1);
+
+  uint8_t receive_buf[2];
+  i2cReceiveFrom(devAddr, receive_buf, 2);
+  uint16_t MSByte = (uint16_t) receive_buf[0];
+  uint16_t LSByte = (uint16_t) receive_buf[1];
+
+  int16_t temp_reg_val = (MSByte << 3) + (LSByte >> 5);
+  // if 11 bit is set, sign is -ve, so convert the 11 bit val to its equivalent 16 bit val
+  // otherwise, sign is +ve, and the 11 bit val will be the same in 16 bits
+  if (temp_reg_val & 0x0400U) {
+      // by simply setting everything above the 11 bits to 1 (top 5 bits here)
+    temp_reg_val |= 0xF800U; 
+  }
+  printf("Temperature Register Value: %i\n", temp_reg_val);
+  
+  float final_temp = ((float) temp_reg_val) * 0.125f;
+  printf("Final Temperature: %f\n", final_temp);
+  *temp = final_temp;
   
   return ERR_CODE_SUCCESS;
 }
