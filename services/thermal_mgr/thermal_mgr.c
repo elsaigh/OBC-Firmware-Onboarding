@@ -2,6 +2,7 @@
 #include "errors.h"
 #include "lm75bd.h"
 #include "console.h"
+#include "logging.h"
 
 #include <FreeRTOS.h>
 #include <os_task.h>
@@ -51,10 +52,26 @@ void osHandlerLM75BD(void) {
   /* Implement this function */
 }
 
-static void thermalMgr(void *pvParameters) {
+static void thermalMgr(void *pvParameters) { // what is pvParameters used for?
   /* Implement this task */
+  thermal_mgr_event_t queueEventItemBuffer = {0};
+
   while (1) {
+
+    printConsole("Here 1\n");
     
+    if (xQueueReceive(thermalMgrQueueHandle,
+      &queueEventItemBuffer, 
+      (TickType_t) 10) == pdPASS) {
+      
+      printConsole("Here 2\n");
+
+      if (queueEventItemBuffer.type == THERMAL_MGR_EVENT_MEASURE_TEMP_CMD) {
+        float tempC;
+        readTempLM75BD(LM75BD_OBC_I2C_ADDR, &tempC);
+        addTemperatureTelemetry(tempC);
+      }
+    }
   }
 }
 
